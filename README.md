@@ -22,6 +22,11 @@ cleaning counts, and validation rankings). Subsequent app starts reuse the saved
 models. Retrain after changing the model code, training data, or scikit-learn
 version. Only load locally generated model artifacts.
 
+The artifact uses `joblib`, a pickle-based persistence format with convenient
+compression for NumPy-heavy scikit-learn objects. It stores the fitted vectorizer,
+all four models, and evaluation metadata together. Plain Python `pickle` would
+also work; changing serialization format does not change predictions or accuracy.
+
 For a terminal prediction:
 
 ```bash
