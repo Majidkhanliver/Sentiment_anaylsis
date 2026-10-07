@@ -1,7 +1,7 @@
 # Sentiment Lab
 
-A text-box UI that shows predictions from **Naive Bayes, Linear SVM, Logistic
-Regression, and Random Forest**, followed by their equal-weight voting result.
+A text-box UI that shows predictions from **Naive Bayes and Linear SVM**,
+followed by their equal-weight voting result.
 The existing notebooks and CSV files are preserved.
 
 ## Run locally
@@ -24,7 +24,7 @@ version. Only load locally generated model artifacts.
 
 The artifact uses `joblib`, a pickle-based persistence format with convenient
 compression for NumPy-heavy scikit-learn objects. It stores the fitted vectorizer,
-all four models, and evaluation metadata together. Plain Python `pickle` would
+both models, and evaluation metadata together. Plain Python `pickle` would
 also work; changing serialization format does not change predictions or accuracy.
 
 For a terminal prediction:
@@ -51,9 +51,10 @@ python sentiment.py --text "I really enjoyed this!"
   evaluated against cleaned `test.csv`. Test labels do not select voting weights,
   model settings, or tie-breaking order. Settings are fixed baselines, not a
   hyperparameter search.
-- Every model gets one vote. A unique highest count wins, including a 2–1–1
-  plurality. For tied counts, the highest-ranked model supporting a tied label
-  decides. The UI explains both ties and results without a strict majority.
+- Each model gets one vote. If both agree, that sentiment wins. If they disagree
+  (a 1–1 tie), the higher-ranked model on validation data decides. The UI explains
+  split votes. With two models, this voting result always matches the
+  higher-ranked model; it is not a separately trained model.
 - Vote agreement is not prediction confidence. The performance panel compares
   the ensemble against each individual model; voting need not improve accuracy.
 
@@ -66,3 +67,10 @@ reliably covered by this dataset.
 
 The original notebooks keep their historical outputs and machine-specific paths.
 They are independent of the new app. No test files are required to run the app.
+
+## Presentation
+
+The updated project presentation is available at
+[presentation/Sentiment_Analysis_updated.pptx](presentation/Sentiment_Analysis_updated.pptx).
+It uses the same two-model evaluation reported by the app: Multinomial Naive Bayes
+and Linear SVM on the shared cleaned test set.

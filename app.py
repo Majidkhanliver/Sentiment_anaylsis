@@ -98,7 +98,7 @@ st.html("""
 .lab-fill.negative { background: #cf5366; }
 .lab-comparison-title { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-top: 10px; }
 .lab-comparison-title h2 { margin: 0; font-size: 20px; padding: 0; letter-spacing: -.4px; }
-.lab-models { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.lab-models { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
 .lab-model {
     background: var(--lab-surface); border: 1px solid var(--lab-line);
     border-radius: 12px; padding: 20px; min-width: 0;
@@ -114,9 +114,6 @@ st.html("""
 [data-testid="stExpander"] summary { min-height: 54px; }
 .st-key-performance_table { overflow-x: auto; }
 .lab-footer { border-top: 1px solid var(--lab-line); padding-top: 18px; color: var(--lab-muted); font-size: 12px; line-height: 1.7; }
-@media (max-width: 850px) {
-    .lab-models { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
 @media (max-width: 640px) {
     [data-testid="stMainBlockContainer"] { padding: 3.5rem 1rem 1.5rem; }
     .lab-topnote { display: none; }
@@ -135,11 +132,11 @@ st.html("""
 st.html("""
 <div class="lab-topbar">
   <div class="lab-brand"><span class="lab-logo" aria-hidden="true"><i></i><i></i><i></i></span>Sentiment Lab</div>
-  <span class="lab-topnote">Four models. A clearer perspective.</span>
+  <span class="lab-topnote">Two models. A clearer perspective.</span>
 </div>
 <div class="lab-hero">
   <div class="lab-eyebrow">Text analysis workspace</div>
-  <h1>One text. Four perspectives.</h1>
+  <h1>One text. Two perspectives.</h1>
   <p>Explore the sentiment behind your words. Compare each model and see their collective vote.</p>
 </div>
 """)
@@ -193,13 +190,16 @@ with input_column, st.container(key="input_panel", height="stretch"):
     if submitted:
         clear_result()
         try:
-            with st.spinner("Comparing the four models…"):
+            with st.spinner("Comparing Naive Bayes and SVM…"):
                 st.session_state.result = predict_text(text, bundle)
                 st.session_state.analyzed_text = text
         except ValueError as error:
             st.warning(str(error))
 
 result = st.session_state.get("result")
+if result and set(result["predictions"]) != set(MODEL_NAMES):
+    clear_result()
+    result = None
 if st.session_state.get("analyzed_text") != text:
     result = None
 
@@ -207,21 +207,20 @@ with result_column, st.container(key="result_panel", height="stretch"):
     st.html('<div class="lab-panel-title"><span class="lab-step">02</span><h2>Voting result</h2></div>')
     if result:
         st.metric("Selected sentiment", result["sentiment"].capitalize())
-        st.write(f"**{result['agreement']} of 4 models** predicted **{result['sentiment']}**.")
+        st.write(f"**{result['agreement']} of {len(MODEL_NAMES)} models** predicted **{result['sentiment']}**.")
         bars = "".join(
             f'<div class="lab-vote"><span>{label.capitalize()}</span>'
             f'<div class="lab-track" aria-hidden="true"><span class="lab-fill {label}" '
-            f'style="width:{count * 25}%"></span></div><strong>{count}/4</strong></div>'
+            f'style="width:{count * 100 / len(MODEL_NAMES):g}%"></span></div>'
+            f'<strong>{count}/{len(MODEL_NAMES)}</strong></div>'
             for label, count in result["votes"].items()
         )
         st.html(f'<div class="lab-votes" aria-label="Votes by sentiment">{bars}</div>')
         if result["tie_breaker"]:
             st.info(
-                f"Split vote · {result['tie_breaker']} broke the tie. It is the highest-ranked "
-                "model on validation data among those voting for a tied label."
+                f"Split vote · {result['tie_breaker']} broke the tie. It is the higher-ranked "
+                "model on validation data."
             )
-        elif not result["strict_majority"]:
-            st.info("No majority · This sentiment has the most votes, but fewer than three models agree.")
         st.caption("Vote agreement is not a probability that the result is correct.")
     else:
         st.html("""
@@ -231,7 +230,7 @@ with result_column, st.container(key="result_panel", height="stretch"):
           </div>
           <h3>Your next insight starts here</h3>
           <p>Add your text and select <strong>Analyze sentiment</strong> to see how the models vote.</p>
-          <div class="lab-empty-footer">4 model predictions · 1 collective result</div>
+          <div class="lab-empty-footer">2 model predictions · 1 collective result</div>
         </div>
         """)
 
@@ -255,9 +254,10 @@ st.html('<div class="lab-models">' + "".join(cards) + '</div>')
 
 with st.expander("Model performance & voting details"):
     st.write(
-        "Each model gets one vote. The sentiment with the most votes wins. For a tie, "
-        "we use the prediction of the highest-ranked model voting for a tied label. "
-        "That ranking comes from validation macro-F1, with validation accuracy as a secondary measure."
+        "Each model gets one vote. If both agree, that sentiment wins. If they disagree, "
+        "we use the prediction of the higher-ranked model. That ranking comes from validation "
+        "macro-F1, with validation accuracy as a secondary measure. With two models, "
+        "the voting result always matches the higher-ranked model."
     )
     report = bundle["report"]
     st.caption("Tie-breaking order: " + " → ".join(report["tie_breaking_order"]))
@@ -273,7 +273,7 @@ with st.expander("Model performance & voting details"):
             for name, scores in report["test_scores"].items()
         ]).set_index("Model"))
     st.caption(
-        "All four models use the same training texts and TF-IDF features. Duplicate text and "
+        "Both models use the same training texts and TF-IDF features. Duplicate text and "
         "conflicting labels are cleaned before splitting; matching test texts are excluded from training. "
         "SVM uses a linear kernel. No model is retrained when you analyze text."
     )

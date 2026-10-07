@@ -1,4 +1,4 @@
-"""Train, save, and run the four sentiment models without changing the notebooks."""
+"""Train, save, and run Naive Bayes and SVM without changing the notebooks."""
 
 from collections import Counter
 from datetime import datetime, timezone
@@ -11,9 +11,7 @@ import unicodedata
 import joblib
 import pandas as pd
 import sklearn
-from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 from sklearn.model_selection import train_test_split
 from sklearn.naive_bayes import MultinomialNB
@@ -23,7 +21,7 @@ from sklearn.svm import LinearSVC
 ROOT = Path(__file__).resolve().parent
 MODEL_PATH = ROOT / "artifacts" / "sentiment.joblib"
 LABELS = ("negative", "neutral", "positive")
-MODEL_NAMES = ("Naive Bayes", "SVM", "Logistic Regression", "Random Forest")
+MODEL_NAMES = ("Naive Bayes", "SVM")
 MAX_TEXT_LENGTH = 5000
 SEED = 42
 
@@ -90,22 +88,15 @@ def new_models():
     return {
         "Naive Bayes": MultinomialNB(alpha=0.5),
         "SVM": LinearSVC(C=1.0, class_weight="balanced", random_state=SEED),
-        "Logistic Regression": LogisticRegression(
-            C=2.0, max_iter=1000, class_weight="balanced", random_state=SEED,
-        ),
-        "Random Forest": RandomForestClassifier(
-            n_estimators=160, max_depth=100, min_samples_leaf=2,
-            class_weight="balanced_subsample", n_jobs=4, random_state=SEED,
-        ),
     }
 
 
 def vote_predictions(predictions, ranking):
     """Use equal votes; resolve tied labels with the validation-ranked models."""
     if set(predictions) != set(MODEL_NAMES) or any(v not in LABELS for v in predictions.values()):
-        raise ValueError("Voting requires one valid prediction from each of the four models.")
+        raise ValueError("Voting requires one valid prediction from each of Naive Bayes and SVM.")
     if len(ranking) != len(MODEL_NAMES) or set(ranking) != set(MODEL_NAMES):
-        raise ValueError("The tie-breaking ranking must contain all four models once.")
+        raise ValueError("The tie-breaking ranking must contain Naive Bayes and SVM exactly once.")
     counts = Counter(predictions.values())
     top_count = max(counts.values())
     leaders = {label for label, count in counts.items() if count == top_count}
@@ -204,7 +195,7 @@ def load_models():
     if bundle["report"]["sklearn_version"] != sklearn.__version__:
         raise ValueError("Dependencies changed. Retrain with: python sentiment.py --train")
     if set(bundle["models"]) != set(MODEL_NAMES):
-        raise ValueError("The model artifact is incomplete. Run: python sentiment.py --train")
+        raise ValueError("The model artifact must contain only Naive Bayes and SVM. Run: python sentiment.py --train")
     return bundle
 
 
