@@ -137,18 +137,19 @@ st.html("""
 <div class="lab-hero">
   <div class="lab-eyebrow">Text analysis workspace</div>
   <h1>One text. Two perspectives.</h1>
-  <p>Explore the sentiment behind your words. Compare each model and see their collective vote.</p>
+  <p>Explore the sentiment behind your words with Naive Bayes and SVM, and see their collective vote.</p>
 </div>
 """)
 
 
 @st.cache_resource(show_spinner="Loading the sentiment models…")
-def cached_models(artifact_mtime):
+def cached_models(artifact_mtime, model_names):
+    # Include the supported models in the cache key when the model list changes.
     return load_models()
 
 
 try:
-    bundle = cached_models(MODEL_PATH.stat().st_mtime_ns)
+    bundle = cached_models(MODEL_PATH.stat().st_mtime_ns, MODEL_NAMES)
 except Exception:
     st.error("The saved models could not be loaded. Train them locally, then refresh this page.")
     st.code("python sentiment.py --train", language="bash")
@@ -266,12 +267,18 @@ with st.expander("Model performance & voting details"):
         st.table(pd.DataFrame([
             {
                 "Model": name,
-                "Accuracy": f"{scores['accuracy']:.1%}",
-                "Macro-F1": f"{scores['macro_f1']:.3f}",
-                "Negative recall": f"{scores['negative_recall']:.1%}",
+                "Accuracy": f"{report['test_scores'][name]['accuracy']:.1%}",
+                "Macro-F1": f"{report['test_scores'][name]['macro_f1']:.3f}",
+                "Negative recall": f"{report['test_scores'][name]['negative_recall']:.1%}",
             }
-            for name, scores in report["test_scores"].items()
+            for name in MODEL_NAMES
         ]).set_index("Model"))
+    voting_scores = report["test_scores"]["Voting ensemble"]
+    st.caption(
+        f"Combined voting result: accuracy {voting_scores['accuracy']:.1%}, "
+        f"macro-F1 {voting_scores['macro_f1']:.3f}. "
+        "This combines the two predictions; it is not an additional trained model."
+    )
     st.caption(
         "Both models use the same training texts and TF-IDF features. Duplicate text and "
         "conflicting labels are cleaned before splitting; matching test texts are excluded from training. "

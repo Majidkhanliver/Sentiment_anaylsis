@@ -91,6 +91,14 @@ def new_models():
     }
 
 
+def validate_models(models):
+    """Accept only the two supported Python classifiers before using them."""
+    if set(models) != set(MODEL_NAMES):
+        raise ValueError("The model artifact must contain only Naive Bayes and SVM. Run: python sentiment.py --train")
+    if not isinstance(models["Naive Bayes"], MultinomialNB) or not isinstance(models["SVM"], LinearSVC):
+        raise ValueError("The model artifact must use MultinomialNB and LinearSVC. Run: python sentiment.py --train")
+
+
 def vote_predictions(predictions, ranking):
     """Use equal votes; resolve tied labels with the validation-ranked models."""
     if set(predictions) != set(MODEL_NAMES) or any(v not in LABELS for v in predictions.values()):
@@ -194,8 +202,16 @@ def load_models():
         raise ValueError("The model artifact is outdated. Run: python sentiment.py --train")
     if bundle["report"]["sklearn_version"] != sklearn.__version__:
         raise ValueError("Dependencies changed. Retrain with: python sentiment.py --train")
-    if set(bundle["models"]) != set(MODEL_NAMES):
-        raise ValueError("The model artifact must contain only Naive Bayes and SVM. Run: python sentiment.py --train")
+    validate_models(bundle["models"])
+    report = bundle["report"]
+    ranking = report.get("tie_breaking_order", [])
+    if (
+        set(report.get("validation_scores", {})) != set(MODEL_NAMES)
+        or set(report.get("test_scores", {})) != {*MODEL_NAMES, "Voting ensemble"}
+        or len(ranking) != len(MODEL_NAMES)
+        or set(ranking) != set(MODEL_NAMES)
+    ):
+        raise ValueError("The evaluation report must use only Naive Bayes and SVM. Run: python sentiment.py --train")
     return bundle
 
 
@@ -206,10 +222,11 @@ def predict_text(text, bundle):
         raise ValueError(f"Use at most {MAX_TEXT_LENGTH:,} characters.")
     if not re.search(r"[a-zA-Z]", text):
         raise ValueError("Enter a sentence in English, including some words.")
+    validate_models(bundle["models"])
     features = bundle["vectorizer"].transform([normalize_text(text)])
     if features.nnz == 0:
         raise ValueError("No familiar words were found. Try a longer sentence in English.")
-    predictions = {name: str(model.predict(features)[0]) for name, model in bundle["models"].items()}
+    predictions = {name: str(bundle["models"][name].predict(features)[0]) for name in MODEL_NAMES}
     return {"predictions": predictions, **vote_predictions(predictions, bundle["report"]["tie_breaking_order"])}
 
 
@@ -217,7 +234,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--train", action="store_true", help="Train all models and save evaluation results.")
+    parser.add_argument("--train", action="store_true", help="Train Naive Bayes and SVM and save evaluation results.")
     parser.add_argument("--text", help="Analyze text using the saved models.")
     args = parser.parse_args()
     try:

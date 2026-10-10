@@ -35,7 +35,7 @@ python sentiment.py --text "I really enjoyed this!"
 
 ## Evaluation and voting
 
-- All models train on the larger `train.csv`; `sen1.csv` remains available for
+- Naive Bayes and SVM train on the larger `train.csv`; `sen1.csv` remains available for
   the original SVM notebook but is not mixed into the new training data.
 - Only `text` and `sentiment` are used. The CSV encodings are detected with a
   UTF-8 read followed by a Latin-1 fallback.
@@ -55,8 +55,10 @@ python sentiment.py --text "I really enjoyed this!"
   (a 1–1 tie), the higher-ranked model on validation data decides. The UI explains
   split votes. With two models, this voting result always matches the
   higher-ranked model; it is not a separately trained model.
-- Vote agreement is not prediction confidence. The performance panel compares
-  the ensemble against each individual model; voting need not improve accuracy.
+- Vote agreement is not prediction confidence. The performance table lists only
+  Naive Bayes and SVM, with the combined voting result shown separately below it;
+  voting need not improve accuracy. Saved models and evaluation reports are
+  checked to ensure that they use only these two classifiers.
 
 ## Scope
 
